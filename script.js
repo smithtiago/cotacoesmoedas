@@ -1,35 +1,127 @@
-async function loadData(){
- const res = await fetch('cotacao.txt?ts='+Date.now());
- const txt = await res.text();
+async function iniciarTicker() {
+  try {
+    const response = await fetch("./cotacao.txt?ts=" + Date.now(), {
+      cache: "no-store"
+    });
 
- const lines = txt.split('\n');
- const items = [];
+    if (!response.ok) {
+      throw new Error("Não foi possível carregar cotacao.txt");
+    }
 
- lines.forEach(l=>{
-  const m = l.match(/(US\$|USD|EUR|GBP).*?([\d,]+)/);
-  if(m){
-    let code = m[1].replace('US$','USD');
-    let val = m[2];
-    items.push({code, val});
+    const texto = await response.text();
+    const dados = extrairCotacoes(texto);
+    montarTicker(dados);
+  } catch (error) {
+    console.error(error);
+    exibirErro("Não foi possível carregar as cotações.");
   }
- });
-
- render(items);
 }
 
-function render(items){
- const a = document.getElementById('ticker-group-a');
- const b = document.getElementById('ticker-group-b');
- a.innerHTML=''; b.innerHTML='';
+function extrairCotacoes(texto) {
+  const linhas = texto
+    .split(/\r?\n/)
+    .map((linha) => linha.trim())
+    .filter(Boolean);
 
- items.forEach(i=>{
-   const el = document.createElement('div');
-   el.className='ticker-item';
-   el.innerHTML = `<b>${i.code}</b> 1 = R$ ${i.val}`;
-   a.appendChild(el);
-   b.appendChild(el.cloneNode(true));
- });
+  const itens = [];
+
+  for (const linha of linhas) {
+    const item = lerLinhaCotacao(linha);
+    if (item) itens.push(item);
+  }
+
+  return itens;
 }
 
-loadData();
-setInterval(loadData,60000);
+function lerLinhaCotacao(linha) {
+  const regex = /^(US\$|USD|GBP|EUR)\s*1\s*=\s*([\d.,]+)$/i;
+  const match = linha.match(regex);
+
+  if (!match) return null;
+
+  let code = match[1].toUpperCase();
+  const valorBruto = match[2];
+
+  if (code === "US$") {
+    code = "US$";
+  }
+
+  return {
+    code,
+    value: formatarReal(valorBruto)
+  };
+}
+
+function formatarReal(valorBruto) {
+  const numero = parseFloat(
+    valorBruto.replace(/\./g, "").replace(",", ".")
+  );
+
+  if (isNaN(numero)) return "R$ --";
+
+  return numero.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function montarTicker(items) {
+  const groupA = document.getElementById("ticker-group-a");
+  const groupB = document.getElementById("ticker-group-b");
+
+  groupA.innerHTML = "";
+  groupB.innerHTML = "";
+
+  if (!items.length) {
+    exibirErro("Nenhuma cotação válida encontrada.");
+    return;
+  }
+
+  items.forEach((item) => {
+    groupA.appendChild(criarItem(item));
+    groupB.appendChild(criarItem(item));
+  });
+}
+
+function criarItem(item) {
+  const div = document.createElement("div");
+  div.className = "ticker-item";
+
+  const code = document.createElement("span");
+  code.className = "ticker-code";
+  code.textContent = item.code + "1";
+
+  const equals = document.createElement("span");
+  equals.className = "ticker-equals";
+  equals.textContent = "=";
+
+  const value = document.createElement("span");
+  value.className = "ticker-value";
+  value.textContent = item.value;
+
+  div.appendChild(code);
+  div.appendChild(equals);
+  div.appendChild(value);
+
+  return div;
+}
+
+function exibirErro(mensagem) {
+  const groupA = document.getElementById("ticker-group-a");
+  const groupB = document.getElementById("ticker-group-b");
+
+  const html = `
+    <div class="ticker-item">
+      <span class="ticker-code">COTAÇÕES</span>
+      <span class="ticker-value">${mensagem}</span>
+    </div>
+  `;
+
+  groupA.innerHTML = html;
+  groupB.innerHTML = html;
+}
+
+iniciarTicker();
+setInterval(iniciarTicker, 60000);
