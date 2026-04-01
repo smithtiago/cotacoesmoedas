@@ -9,8 +9,8 @@ async function iniciarTicker() {
     }
 
     const texto = await response.text();
-    const dados = extrairCotacoes(texto);
-    montarTicker(dados);
+    const items = extrairCotacoes(texto);
+    montarTicker(items);
   } catch (error) {
     console.error(error);
     exibirErro("Não foi possível carregar as cotações.");
@@ -34,7 +34,7 @@ function extrairCotacoes(texto) {
 }
 
 function lerLinhaCotacao(linha) {
-  const regex = /^(US\$|USD|GBP|EUR)\s*1\s*=\s*([\d.,]+)$/i;
+  const regex = /^(US\$|USD|GBP|EUR)\s*1\s*=\s*([\d]+(?:[.,]\d+)?)$/i;
   const match = linha.match(regex);
 
   if (!match) return null;
@@ -42,7 +42,7 @@ function lerLinhaCotacao(linha) {
   let code = match[1].toUpperCase();
   const valorBruto = match[2];
 
-  if (code === "US$") {
+  if (code === "USD") {
     code = "US$";
   }
 
@@ -53,9 +53,7 @@ function lerLinhaCotacao(linha) {
 }
 
 function formatarReal(valorBruto) {
-  const numero = parseFloat(
-    valorBruto.replace(/\./g, "").replace(",", ".")
-  );
+  const numero = parseFloat(valorBruto.replace(",", "."));
 
   if (isNaN(numero)) return "R$ --";
 
