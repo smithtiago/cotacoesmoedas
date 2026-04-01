@@ -5,3 +5,8 @@ Seguem as moedas turismo para praticar com os clientes.
 US$ 1 = 5,42
 GBP 1 = 7,28
 EUR 1 = 6,24
+
+Anterior:
+US$ 1 = 5,40
+GBP 1 = 7,25
+EUR 1 = 6,20
